@@ -4,10 +4,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 public class Main {
@@ -39,6 +41,21 @@ public class Main {
         deleteFiles(filesToZip);
 
         System.out.println("Готово. Архив: " + zipPath);
+
+        // --- Задание 3 ---
+        openZip(zipPath, SAVE_DIR);
+        String datToOpen = pickDatToOpen(save2, SAVE_DIR);
+        if (datToOpen == null) {
+            System.err.println("Не найден ни один .dat после распаковки.");
+            return;
+        }
+
+        GameProgress loaded = openProgress(datToOpen);
+        if (loaded != null) {
+            System.out.println(loaded);
+        } else {
+            System.err.println("Не удалось прочитать сохранение: " + datToOpen);
+        }
     }
 
     public static void saveGame(String filePath, GameProgress progress) {
@@ -99,5 +116,59 @@ public class Main {
                 System.out.println((deleted ? "Удалён: " : "Не удалось удалить: ") + f.getAbsolutePath());
             }
         }
+    }
+
+    // --- Задание 3 ---
+
+    public static void openZip(String zipPath, String destDir) {
+        File targetDir = new File(destDir);
+        if (!targetDir.exists()) {
+            targetDir.mkdirs();
+        }
+
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipPath))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                File outFile = new File(destDir, entry.getName());
+
+                File parent = outFile.getParentFile();
+                if (parent != null && !parent.exists()) {
+                    parent.mkdirs();
+                }
+
+                try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                    int b;
+                    while ((b = zis.read()) != -1) {
+                        fos.write(b);
+                    }
+                }
+                zis.closeEntry();
+                System.out.println("Распакован: " + outFile.getAbsolutePath());
+            }
+        } catch (IOException e) {
+            System.err.println("Ошибка распаковки " + zipPath + ": " + e.getMessage());
+        }
+    }
+
+    public static GameProgress openProgress(String filePath) {
+        try (FileInputStream fis = new FileInputStream(filePath);
+             ObjectInputStream ois = new ObjectInputStream(fis)) {
+            return (GameProgress) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Ошибка чтения сохранения " + filePath + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    private static String pickDatToOpen(String preferredPath, String dir) {
+        File preferred = new File(preferredPath);
+        if (preferred.exists() && preferred.isFile()) return preferred.getAbsolutePath();
+
+        File folder = new File(dir);
+        File[] list = folder.listFiles((d, name) -> name.toLowerCase().endsWith(".dat"));
+        if (list != null && list.length > 0) {
+            return list[0].getAbsolutePath();
+        }
+        return null;
     }
 }
