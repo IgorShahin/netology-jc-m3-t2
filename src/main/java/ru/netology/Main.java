@@ -162,7 +162,9 @@ public class Main {
 
     private static String pickDatToOpen(String preferredPath, String dir) {
         File preferred = new File(preferredPath);
-        if (preferred.exists() && preferred.isFile()) return preferred.getAbsolutePath();
+        if (preferred.exists() && preferred.isFile()) {
+            return preferred.getAbsolutePath();
+        }
 
         File folder = new File(dir);
         File[] list = folder.listFiles((d, name) -> name.toLowerCase().endsWith(".dat"));
